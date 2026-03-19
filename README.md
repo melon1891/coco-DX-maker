@@ -35,6 +35,11 @@ BCDiceの整数除算を利用して、侵蝕率に応じた以下の補正を�
 
 - [ゆとシートII for DX3rd](https://yutorize.work/ytsheet/dx3rd/)
 
+## 参考
+
+- [ココフォリア上で快適にDX3rdを遊ぶための工夫](https://note.com/yomokami/n/na9476337c4c8) - キャラクターコマ・チャットパレットの設計思想
+- [ココフォリア上で快適にDX3rdを遊ぶためのチャットパレット設定](https://note.com/jagjagsuke/n/n8262836e2efa) - チャットパレットの具体的な設定方法
+
 ## 注意事項
 
 - 本ツールは非公式のファンメイドツールです
