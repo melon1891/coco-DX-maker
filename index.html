@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DX3rd → ココフォリア変換ツール</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080910;--surface:#11131c;--surface-alt:#1a1d2a;
+  --border:#24273a;--accent:#b82038;--accent-light:#e03050;--accent-dim:#6e1828;
+  --text:#b8b8c4;--text-dim:#5c5e70;--text-bright:#e0e0e8;
+  --success:#28804a;--font-head:'Shippori Mincho','Yu Mincho',serif;
+  --font-body:'Zen Kaku Gothic New','Yu Gothic',sans-serif;
+  --font-mono:'Consolas','Monaco','Courier New',monospace;
+  --radius:6px
+}
+html{font-size:15px}
+body{
+  font-family:var(--font-body);color:var(--text);
+  background:
+    radial-gradient(ellipse at 15% 30%,rgba(140,20,40,.07) 0%,transparent 60%),
+    radial-gradient(ellipse at 85% 70%,rgba(60,10,30,.05) 0%,transparent 50%),
+    var(--bg);
+  min-height:100vh;line-height:1.7;-webkit-font-smoothing:antialiased
+}
+.app{max-width:780px;margin:0 auto;padding:2rem 1.5rem 4rem}
+header{text-align:center;margin-bottom:3rem;padding:2rem 0}
+header h1{font-family:var(--font-head);font-size:2.2rem;font-weight:800;color:var(--text-bright);letter-spacing:.04em;margin-bottom:.3rem}
+header h1 .arrow{color:var(--accent);text-shadow:0 0 30px rgba(180,30,50,.5)}
+header .subtitle{font-size:.88rem;color:var(--text-dim);letter-spacing:.08em}
+header::after{content:'';display:block;width:60px;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);margin:1.2rem auto 0}
+section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2rem;margin-bottom:2rem}
+section h2{font-family:var(--font-head);font-size:1.15rem;font-weight:700;color:var(--text-bright);margin-bottom:1.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+section h3{font-size:.92rem;font-weight:700;color:var(--text-bright);margin-bottom:.4rem}
+label{display:block;font-size:.85rem;font-weight:700;color:var(--text-bright);margin-bottom:.3rem}
+input[type="text"],textarea{
+  width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);
+  color:var(--text);font-family:var(--font-mono);font-size:.84rem;padding:.65rem .85rem;
+  transition:border-color .2s;line-height:1.6
+}
+input[type="text"]:focus,textarea:focus{outline:none;border-color:var(--accent-dim)}
+textarea{resize:vertical}
+.url-row{display:flex;gap:.5rem}
+.url-row input{flex:1}
+.hint{font-size:.78rem;color:var(--text-dim);margin:.3rem 0 .5rem}
+.hint code{background:var(--surface-alt);padding:.1em .4em;border-radius:3px;font-family:var(--font-mono);color:var(--accent-light);font-size:.82rem}
+.input-group{margin-bottom:1.2rem}
+button{font-family:var(--font-body);font-size:.85rem;font-weight:700;border:none;border-radius:var(--radius);cursor:pointer;transition:all .15s;padding:.6rem 1.4rem}
+.fetch-btn{background:var(--surface-alt);color:var(--text);border:1px solid var(--border);white-space:nowrap}
+.fetch-btn:hover{background:var(--border)}
+.fetch-btn:disabled{opacity:.5;cursor:not-allowed}
+.convert-btn{display:block;width:100%;background:var(--accent);color:#fff;padding:.8rem;font-size:1rem;letter-spacing:.06em}
+.convert-btn:hover{background:var(--accent-light)}
+.copy-btn{background:var(--surface-alt);color:var(--text);border:1px solid var(--border);font-size:.78rem;padding:.35rem .8rem}
+.copy-btn:hover{background:var(--border)}
+.copy-btn.copied{background:var(--success);border-color:var(--success);color:#fff}
+.divider{text-align:center;margin:1.2rem 0;position:relative}
+.divider::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:var(--border)}
+.divider span{position:relative;background:var(--surface);padding:0 1rem;font-size:.82rem;color:var(--text-dim)}
+.output-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+.output-group{margin-bottom:1.5rem}
+.output-group:last-child{margin-bottom:0}
+#cocofoliaOutput{font-size:.74rem;line-height:1.5;background:var(--bg);white-space:pre-wrap;word-break:break-all}
+#palettePreview{
+  background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);
+  padding:1rem;font-family:var(--font-mono);font-size:.82rem;line-height:1.7;
+  color:var(--text);white-space:pre-wrap;word-break:break-all;overflow-x:auto;max-height:500px;overflow-y:auto
+}
+.error-box{margin-top:1rem;padding:.8rem 1rem;background:rgba(200,40,40,.1);border:1px solid rgba(200,40,40,.3);border-radius:var(--radius);font-size:.85rem;color:#e08080}
+.error-box a{color:var(--accent-light);word-break:break-all}
+.toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--success);color:#fff;padding:.5rem 1.5rem;border-radius:var(--radius);font-size:.85rem;font-weight:500;opacity:0;transition:all .3s ease;pointer-events:none;z-index:100}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.loading{display:inline-block;width:14px;height:14px;border:2px solid var(--text-dim);border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:.3rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+footer{text-align:center;padding:2rem 0;font-size:.72rem;color:var(--text-dim);line-height:1.8}
+@media(max-width:600px){
+  .app{padding:1rem}header h1{font-size:1.6rem}section{padding:1.2rem}
+  .url-row{flex-direction:column}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>DX3rd <span class="arrow">→</span> ココフォリア</h1>
+    <p class="subtitle">ゆとシートII キャラクターシート変換ツール</p>
+  </header>
+  <main>
+    <section>
+      <h2>キャラクターデータ入力</h2>
+      <div class="input-group">
+        <label for="sheetUrl">キャラクターシートURL</label>
+        <div class="url-row">
+          <input type="text" id="sheetUrl" placeholder="https://yutorize.work/ytsheet/dx3rd/?id=XXXXX">
+          <button class="fetch-btn" onclick="fetchFromUrl()" id="fetchBtn">取得</button>
+        </div>
+      </div>
+      <div class="divider"><span>または</span></div>
+      <div class="input-group">
+        <label for="jsonInput">JSONデータを直接貼り付け</label>
+        <p class="hint">URLの末尾に <code>&amp;mode=json</code> を追加して表示されるJSONをコピー</p>
+        <textarea id="jsonInput" rows="6" placeholder='{"characterName":"...","sttTotalBody":"6",...}'></textarea>
+      </div>
+      <button class="convert-btn" onclick="convertFromJson()">変換</button>
+      <div id="errorMsg" class="error-box" style="display:none"></div>
+    </section>
+    <section id="outputSection" style="display:none">
+      <h2>出力結果</h2>
+      <div class="output-group">
+        <div class="output-header">
+          <h3>ココフォリア コピペ用コード</h3>
+          <button class="copy-btn" onclick="copyText('cocofoliaOutput',this)">コピー</button>
+        </div>
+        <textarea id="cocofoliaOutput" readonly rows="5"></textarea>
+        <p class="hint">ココフォリアの盤面上で Ctrl+V で貼り付けるとキャラクターコマが生成されます</p>
+      </div>
+      <div class="output-group">
+        <div class="output-header">
+          <h3>チャットパレット プレビュー</h3>
+          <button class="copy-btn" onclick="copyText('palettePreview',this)">コピー</button>
+        </div>
+        <pre id="palettePreview"></pre>
+      </div>
+    </section>
+  </main>
+  <footer>
+    ダブルクロス The 3rd Edition は 有限会社ファーイースト・アミューズメント・リサーチ の著作物です。<br>
+    本ツールは非公式のファンメイドツールです。
+  </footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ========== Constants ========== */
+
+const EROSION_DICE = '(({侵蝕率}+70)/130+({侵蝕率}+100)/180+({侵蝕率}+100)/200+({侵蝕率}+300)/430)';
+const EROSION_LV = '(({侵蝕率}+20)/120+{侵蝕率}/160)';
+
+function conseFormula(lv) {
+  if (lv <= 0) return '0';
+  const mx = 3 - lv;
+  if (mx <= 0) return '0';
+  if (mx === 1) return '(({侵蝕率}+300)/400)';
+  return '(({侵蝕率}+300)/400+({侵蝕率}+240)/400)';
+}
+
+const STD_SKILLS = [
+  {k:'Melee',  n:'白兵',ab:'肉体'},{k:'Dodge',  n:'回避',ab:'肉体'},
+  {k:'Shoot',  n:'射撃',ab:'感覚'},{k:'Percept',n:'知覚',ab:'感覚'},
+  {k:'RC',     n:'RC',  ab:'精神'},{k:'Will',   n:'意志',ab:'精神'},
+  {k:'Nego',   n:'交渉',ab:'社会'},{k:'Procure',n:'調達',ab:'社会'},
+];
+const NAMED_CATS = [
+  {k:'Ride',nf:'skillRideNum',ab:'肉体'},
+  {k:'Art', nf:'skillArtNum', ab:'感覚'},
+  {k:'Know',nf:'skillKnowNum',ab:'精神'},
+  {k:'Info',nf:'skillInfoNum',ab:'社会'},
+];
+const AB_ORDER = ['肉体','感覚','精神','社会'];
+const SK_AB = {'白兵':'肉体','回避':'肉体','射撃':'感覚','知覚':'感覚','RC':'精神','意志':'精神','交渉':'社会','調達':'社会'};
+const PFX_AB = {'運転':'肉体','芸術':'感覚','知識':'精神','情報':'社会'};
+
+function decHtml(s){return s.replace(/&quot;/g,'"').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')}
+
+function abFor(s){
+  const c=s.replace(/[〈〉<>]/g,'');
+  if(SK_AB[c])return SK_AB[c];
+  for(const[p,a]of Object.entries(PFX_AB))if(c.startsWith(p))return a;
+  return '肉体';
+}
+function fw2hw(s){return String(s).replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0))}
+function int(v){return parseInt(fw2hw(String(v)))||0}
+function cleanNote(s){return decHtml(s).replace(/<br\s*\/?>/gi,' ').replace(/\s+/g,' ').trim()}
+function subName(full){
+  if(full.includes(':'))return full.split(':').pop();
+  if(full.includes('：'))return full.split('：').pop();
+  return full;
+}
+
+/* ========== Parsing ========== */
+
+function parseChar(j){
+  const c={};
+  c.name=j.characterName||'';
+  c.aka=j.aka||'';
+  c.memo=j.sheetDescriptionM||'';
+  c.sheetUrl=j.sheetURL||'';
+  c.imageUrl=j.imageURL||'';
+
+  c.ab={'肉体':int(j.sttTotalBody),'感覚':int(j.sttTotalSense),'精神':int(j.sttTotalMind),'社会':int(j.sttTotalSocial)};
+
+  c.skills=[];
+  for(const s of STD_SKILLS){
+    c.skills.push({name:s.n,ab:s.ab,val:int(j['skillTotal'+s.k]),pl:s.n});
+  }
+  for(const cat of NAMED_CATS){
+    const num=int(j[cat.nf]);
+    for(let i=1;i<=num;i++){
+      const fn=j[`skill${cat.k}${i}Name`];
+      if(fn){
+        c.skills.push({name:fn,ab:cat.ab,val:int(j[`skillTotal${cat.k}${i}`]),pl:subName(fn)});
+      }
+    }
+  }
+
+  c.effects=[];
+  for(let i=1;i<=int(j.effectNum);i++){
+    c.effects.push({
+      name:j[`effect${i}Name`]||'',timing:j[`effect${i}Timing`]||'',
+      enc:j[`effect${i}Encroach`]||'0',note:j[`effect${i}Note`]||'',
+      lv:int(j[`effect${i}Lv`]),type:j[`effect${i}Type`]||'',
+    });
+  }
+
+  c.concLv=0;
+  const ce=c.effects.find(e=>e.name.startsWith('コンセントレイト'));
+  if(ce)c.concLv=ce.lv;
+
+  c.combos=[];
+  for(let i=1;i<=int(j.comboNum);i++){
+    c.combos.push({
+      name:j[`combo${i}Name`]||'',combo:j[`combo${i}Combo`]||'',
+      skill:j[`combo${i}Skill`]||'',target:j[`combo${i}Target`]||'',
+      range:j[`combo${i}Range`]||'',note:j[`combo${i}Note`]||'',
+      enc:j[`combo${i}Encroach`]||'0',timing:j[`combo${i}Timing`]||'',
+      da:[1,2,3,4].map(k=>int(j[`combo${i}DiceAdd${k}`])),
+      cr:[1,2,3,4].map(k=>int(j[`combo${i}Crit${k}`])),
+      fx:[1,2,3,4,5].map(k=>int(j[`combo${i}Fixed${k}`])),
+      at:[1,2,3,4].map(k=>(j[`combo${i}Atk${k}`]||'+0').replace(/\s/g,'')),
+    });
+  }
+
+  // Lois
+  c.lois=[];
+  for(let i=1;i<=7;i++){
+    const nm=j[`lois${i}Name`];
+    if(!nm)continue;
+    const rel=j[`lois${i}Relation`]||'';
+    const isDlois=rel==='Dロイス';
+    const ep=j[`lois${i}EmoPosi`]||'';
+    const en=j[`lois${i}EmoNega`]||'';
+    const epC=j[`lois${i}EmoPosiCheck`]==='1';
+    const enC=j[`lois${i}EmoNegaCheck`]==='1';
+    const note=j[`lois${i}Note`]||'';
+    const state=j[`lois${i}State`]||'';
+    c.lois.push({name:decHtml(nm),isDlois,ep,en,epC,enC,note,state});
+  }
+
+  c.hp=int(j.maxHpTotal);
+  c.baseEnc=int(j.baseEncroach);
+  c.loisH=int(j.loisHave);
+  c.loisM=int(j.loisMax);
+  c.saving=int(j.savingTotal);
+  c.init=int(j.initiativeTotal);
+  return c;
+}
+
+/* ========== Generation ========== */
+
+function genStatus(c){
+  return [
+    {label:'HP',value:c.hp,max:c.hp},
+    {label:'侵蝕率',value:c.baseEnc,max:0},
+    {label:'ロイス',value:c.loisH,max:c.loisM},
+    {label:'財産',value:c.saving,max:c.saving},
+    {label:'攻撃力',value:0,max:0},
+    {label:'ガード',value:0,max:0},
+    {label:'装甲値',value:0,max:0},
+  ];
+}
+
+function genParams(c){
+  const p=[];
+  p.push({label:'なし',value:'0'});
+  p.push({label:'侵蝕率ダイス',value:EROSION_DICE});
+  p.push({label:'侵蝕率Lv',value:EROSION_LV});
+  if(c.concLv>0)p.push({label:'コンセ',value:conseFormula(c.concLv)});
+  for(const ab of AB_ORDER)p.push({label:ab,value:String(c.ab[ab])});
+  for(const sk of c.skills)p.push({label:sk.pl,value:String(sk.val)});
+  return p;
+}
+
+function skLabel(comboSkill,skills){
+  const cl=comboSkill.replace(/[〈〉<>]/g,'');
+  let s=skills.find(x=>x.name===cl);
+  if(s)return s.pl;
+  s=skills.find(x=>cl.includes(x.name)||x.name.includes(cl));
+  if(s)return s.pl;
+  s=skills.find(x=>x.pl===cl);
+  if(s)return s.pl;
+  return cl;
+}
+
+function comboEnc(combo,effects){
+  const v=int(combo.enc);
+  if(v>0)return v;
+  // フォールバック：エフェクト一覧から全エフェクトの侵蝕コストを合算
+  const parts=combo.combo.split('+').map(s=>s.trim());
+  let total=0;
+  for(const part of parts){
+    const cn=part.replace(/\(.*?\)/g,'').trim();
+    const ef=effects.find(e=>
+      e.name===cn||cn.includes(e.name.split('：')[0])||cn.includes(e.name.split(':')[0])||e.name.includes(cn)
+    );
+    if(ef){const ev=parseInt(ef.enc);if(!isNaN(ev)&&ev>0)total+=ev;}
+  }
+  return total;
+}
+
+function genPalette(c){
+  const L=[];
+  const dn=c.aka?`"${c.aka}" ${c.name}`:c.name;
+  L.push(dn);
+  L.push('1d10 登場ダイス');
+  L.push(':侵蝕率+');
+  L.push(':HP-');
+
+  for(const ab of AB_ORDER){
+    L.push(`({${ab}}+{侵蝕率ダイス})dx(10)+{なし}　　【${ab}】技能なし`);
+    for(const sk of c.skills.filter(s=>s.ab===ab)){
+      L.push(`({${ab}}+{侵蝕率ダイス})dx(10)+{${sk.pl}}　　【${ab}】${sk.name}`);
+    }
+  }
+
+  L.push('復活');
+  L.push('1d10 《リザレクト》：HP1d10回復，侵蝕率を回復分増加');
+  L.push('タイタス：復活し，HPを{肉体}+10回復');
+
+  if(c.lois.length>0){
+    L.push('ロイス');
+    for(const lo of c.lois){
+      L.push(lo.name);
+      if(lo.isDlois){
+        L.push(`Dロイス：${lo.name}${lo.note?' ／'+lo.note:''}`);
+      }else{
+        const ep=lo.epC?'■'+lo.ep:lo.ep;
+        const en=lo.enC?'■'+lo.en:lo.en;
+        const emo=(ep||en)?`（${ep}／${en}）`:'';
+        L.push(`ロイス：${lo.name}${emo}${lo.note?' ／'+lo.note:''}`);
+      }
+    }
+  }
+
+  const cEff=c.effects.filter(e=>
+    !['auto','easy'].includes(e.type)&&
+    !e.name.startsWith('コンセントレイト')&&
+    !e.name.startsWith('リザレクト')&&
+    !e.name.startsWith('ワーディング')&&
+    ['マイナー','セットアップ','オート'].includes(e.timing)
+  );
+  if(cEff.length>0){
+    L.push('セットアップ／マイナー／オート');
+    for(const ef of cEff){
+      const ev=int(ef.enc);
+      if(ev>0)L.push(`:侵蝕率+${ev}　《${ef.name}》`);
+      L.push(`《${ef.name}》：${cleanNote(ef.note)}`);
+      if(ef.note.includes('攻撃力')||ef.note.includes('データ変更'))L.push(':攻撃力=');
+      if(ef.note.includes('ガード'))L.push(':ガード=');
+    }
+  }
+
+  if(c.combos.length>0){
+    L.push('コンボ');
+    for(const cb of c.combos){
+      L.push('');
+      const enc=comboEnc(cb,c.effects);
+      L.push(`:侵蝕率+${enc}　${cb.name}`);
+      L.push(`${cb.name}　${cb.combo}`);
+      if(cb.note)L.push(cleanNote(cb.note));
+
+      // 判定式・ダメージ式はSkillがあるコンボのみ出力
+      const hasSkill=cb.skill&&cb.skill!=='―'&&cb.skill!=='';
+      if(hasSkill){
+        const ab=abFor(cb.skill);
+        const sl=skLabel(cb.skill,c.skills);
+        const baseD=cb.da[0];
+        const lvM=cb.da.length>=4?Math.max(0,cb.da[3]-cb.da[2]-1):0;
+
+        let dp=`{${ab}}+{侵蝕率ダイス}`;
+        if(baseD>0||lvM>0){
+          dp+=`+${baseD}`;
+          if(lvM>0)dp+=`+{侵蝕率Lv}*${lvM}`;
+        }
+
+        const hasC=cb.combo.includes('コンセントレイト');
+        let cp;
+        if(hasC&&c.concLv>0){cp=`10-(${c.concLv}+{コンセ})`;}
+        else{cp=String(cb.cr[0]||10);}
+
+        L.push(`(${dp})dx(${cp})+{${sl}} ${cb.name}判定`);
+
+        const bA=int(cb.at[0].replace(/[+＋]/g,''))||0;
+        const a3=int(cb.at[2]?cb.at[2].replace(/[+＋]/g,''):0);
+        const a4=int(cb.at[3]?cb.at[3].replace(/[+＋]/g,''):0);
+        const aLv=Math.max(0,a4-a3);
+
+        let dm=`(/10+1)d10+${bA}`;
+        if(aLv>0)dm+=`+{侵蝕率Lv}*${aLv}`;
+        L.push(`${dm} ${cb.name}ダメージ`);
+      }
+    }
+  }
+  return L.join('\n');
+}
+
+function generate(c){
+  const dn=c.aka?`"${c.aka}" ${c.name}`:c.name;
+  return {
+    kind:'character',
+    data:{
+      name:dn,memo:c.memo,commands:genPalette(c),
+      externalUrl:c.sheetUrl,iconUrl:c.imageUrl,
+      initiative:c.init,width:5,
+      secret:false,invisible:false,hideStatus:false,
+      status:genStatus(c),params:genParams(c),
+    }
+  };
+}
+
+/* ========== UI ========== */
+
+function showErr(msg){const el=document.getElementById('errorMsg');el.innerHTML=msg;el.style.display='block'}
+function hideErr(){document.getElementById('errorMsg').style.display='none'}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2000)}
+
+async function fetchFromUrl(){
+  hideErr();
+  const url=document.getElementById('sheetUrl').value.trim();
+  if(!url){showErr('URLを入力してください。');return}
+  const m=url.match(/[?&]id=([^&]+)/);
+  if(!m){showErr('URLからキャラクターIDを取得できませんでした。');return}
+  const base=url.split('?')[0];
+  const jUrl=`${base}?id=${m[1]}&mode=json`;
+  const btn=document.getElementById('fetchBtn');
+  btn.innerHTML='<span class="loading"></span>取得中';btn.disabled=true;
+  try{
+    const r=await fetch(jUrl);
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    document.getElementById('jsonInput').value=await r.text();
+    btn.innerHTML='取得';btn.disabled=false;
+    convertFromJson();
+  }catch(e){
+    btn.innerHTML='取得';btn.disabled=false;
+    showErr(
+      'データの直接取得に失敗しました（CORS制限の可能性があります）。<br>'+
+      '以下のURLをブラウザで開き、表示されたJSONをコピーして下の欄に貼り付けてください：<br>'+
+      `<a href="${jUrl}" target="_blank">${jUrl}</a>`
+    );
+  }
+}
+
+function convertFromJson(){
+  hideErr();
+  const txt=document.getElementById('jsonInput').value.trim();
+  if(!txt){showErr('JSONデータを入力してください。');return}
+  let json;
+  try{json=JSON.parse(txt)}catch(e){showErr('JSONの解析に失敗しました。正しいJSON形式か確認してください。');return}
+  if(!json.characterName){showErr('キャラクターデータが見つかりません。ゆとシートIIのJSONデータか確認してください。');return}
+  try{
+    const c=parseChar(json);
+    const result=generate(c);
+    document.getElementById('cocofoliaOutput').value=JSON.stringify(result);
+    document.getElementById('palettePreview').textContent=result.data.commands;
+    const out=document.getElementById('outputSection');
+    out.style.display='';
+    out.scrollIntoView({behavior:'smooth'});
+  }catch(e){
+    showErr('変換中にエラーが発生しました: '+e.message);
+    console.error(e);
+  }
+}
+
+function copyText(id,btn){
+  const el=document.getElementById(id);
+  const txt=el.value||el.textContent;
+  navigator.clipboard.writeText(txt).then(()=>{
+    toast('コピーしました');
+    if(btn){btn.classList.add('copied');btn.textContent='コピー済';setTimeout(()=>{btn.classList.remove('copied');btn.textContent='コピー'},2000)}
+  });
+}
+
+(function(){
+  const p=new URLSearchParams(location.search);
+  const u=p.get('url');
+  if(u){document.getElementById('sheetUrl').value=u;fetchFromUrl()}
+})();
+</script>
+</body>
+</html>
