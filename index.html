@@ -70,6 +70,12 @@ button{font-family:var(--font-body);font-size:.85rem;font-weight:700;border:none
   padding:1rem;font-family:var(--font-mono);font-size:.82rem;line-height:1.7;
   color:var(--text);white-space:pre-wrap;word-break:break-all;overflow-x:auto;max-height:500px;overflow-y:auto
 }
+.checkbox-group{display:flex;flex-wrap:wrap;gap:.6rem .8rem;margin-bottom:1.2rem}
+.checkbox-group label{display:flex;align-items:center;gap:.4rem;font-size:.85rem;font-weight:500;color:var(--text);cursor:pointer;user-select:none}
+.checkbox-group input[type="checkbox"]{accent-color:var(--accent);width:16px;height:16px;cursor:pointer}
+.select-actions{display:flex;gap:.5rem;margin-bottom:.6rem}
+.select-actions button{background:none;border:none;color:var(--accent-light);font-size:.78rem;cursor:pointer;padding:0;font-family:var(--font-body);text-decoration:underline}
+.select-actions button:hover{color:var(--text-bright)}
 .error-box{margin-top:1rem;padding:.8rem 1rem;background:rgba(200,40,40,.1);border:1px solid rgba(200,40,40,.3);border-radius:var(--radius);font-size:.85rem;color:#e08080}
 .error-box a{color:var(--accent-light);word-break:break-all}
 .toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--success);color:#fff;padding:.5rem 1.5rem;border-radius:var(--radius);font-size:.85rem;font-weight:500;opacity:0;transition:all .3s ease;pointer-events:none;z-index:100}
@@ -110,6 +116,22 @@ footer{text-align:center;padding:2rem 0;font-size:.72rem;color:var(--text-dim);l
     </section>
     <section id="outputSection" style="display:none">
       <h2>出力結果</h2>
+      <div class="input-group">
+        <label>コードに含める内容</label>
+        <div class="select-actions">
+          <button onclick="toggleAllOutputOptions(true)">すべて選択</button>
+          <button onclick="toggleAllOutputOptions(false)">すべて解除</button>
+        </div>
+        <div class="checkbox-group" id="outputOptions">
+          <label><input type="checkbox" value="status" checked onchange="regenerateOutput()">ステータス</label>
+          <label><input type="checkbox" value="params" checked onchange="regenerateOutput()">パラメータ</label>
+          <label><input type="checkbox" value="basicRolls" checked onchange="regenerateOutput()">基本判定</label>
+          <label><input type="checkbox" value="resurrect" checked onchange="regenerateOutput()">復活</label>
+          <label><input type="checkbox" value="lois" checked onchange="regenerateOutput()">ロイス</label>
+          <label><input type="checkbox" value="effects" checked onchange="regenerateOutput()">セットアップ／マイナー</label>
+          <label><input type="checkbox" value="combos" checked onchange="regenerateOutput()">コンボ</label>
+        </div>
+      </div>
       <div class="output-group">
         <div class="output-header">
           <h3>ココフォリア コピペ用コード</h3>
@@ -261,7 +283,8 @@ function parseChar(j){
 
 /* ========== Generation ========== */
 
-function genStatus(c){
+function genStatus(c,opts){
+  if(opts&&!opts.status)return [];
   return [
     {label:'HP',value:c.hp,max:c.hp},
     {label:'侵蝕率',value:c.baseEnc,max:0},
@@ -273,7 +296,8 @@ function genStatus(c){
   ];
 }
 
-function genParams(c){
+function genParams(c,opts){
+  if(opts&&!opts.params)return [];
   const p=[];
   p.push({label:'なし',value:'0'});
   p.push({label:'侵蝕率ダイス',value:EROSION_DICE});
@@ -311,7 +335,7 @@ function comboEnc(combo,effects){
   return total;
 }
 
-function genPalette(c){
+function genPalette(c,opts){
   const L=[];
   const dn=c.aka?`"${c.aka}" ${c.name}`:c.name;
   L.push(dn);
@@ -319,18 +343,22 @@ function genPalette(c){
   L.push(':侵蝕率+');
   L.push(':HP-');
 
-  for(const ab of AB_ORDER){
-    L.push(`({${ab}}+{侵蝕率ダイス})dx(10)+{なし}　　【${ab}】技能なし`);
-    for(const sk of c.skills.filter(s=>s.ab===ab)){
-      L.push(`({${ab}}+{侵蝕率ダイス})dx(10)+{${sk.pl}}　　【${ab}】${sk.name}`);
+  if(!opts||opts.basicRolls){
+    for(const ab of AB_ORDER){
+      L.push(`({${ab}}+{侵蝕率ダイス})dx(10)+{なし}　　【${ab}】技能なし`);
+      for(const sk of c.skills.filter(s=>s.ab===ab)){
+        L.push(`({${ab}}+{侵蝕率ダイス})dx(10)+{${sk.pl}}　　【${ab}】${sk.name}`);
+      }
     }
   }
 
-  L.push('復活');
-  L.push('1d10 《リザレクト》：HP1d10回復，侵蝕率を回復分増加');
-  L.push('タイタス：復活し，HPを{肉体}+10回復');
+  if(!opts||opts.resurrect){
+    L.push('復活');
+    L.push('1d10 《リザレクト》：HP1d10回復，侵蝕率を回復分増加');
+    L.push('タイタス：復活し，HPを{肉体}+10回復');
+  }
 
-  if(c.lois.length>0){
+  if((!opts||opts.lois)&&c.lois.length>0){
     L.push('ロイス');
     for(const lo of c.lois){
       L.push(lo.name);
@@ -345,25 +373,27 @@ function genPalette(c){
     }
   }
 
-  const cEff=c.effects.filter(e=>
-    !['auto','easy'].includes(e.type)&&
-    !e.name.startsWith('コンセントレイト')&&
-    !e.name.startsWith('リザレクト')&&
-    !e.name.startsWith('ワーディング')&&
-    ['マイナー','セットアップ','オート'].includes(e.timing)
-  );
-  if(cEff.length>0){
-    L.push('セットアップ／マイナー／オート');
-    for(const ef of cEff){
-      const ev=int(ef.enc);
-      if(ev>0)L.push(`:侵蝕率+${ev}　《${ef.name}》`);
-      L.push(`《${ef.name}》：${cleanNote(ef.note)}`);
-      if(ef.note.includes('攻撃力')||ef.note.includes('データ変更'))L.push(':攻撃力=');
-      if(ef.note.includes('ガード'))L.push(':ガード=');
+  if(!opts||opts.effects){
+    const cEff=c.effects.filter(e=>
+      !['auto','easy'].includes(e.type)&&
+      !e.name.startsWith('コンセントレイト')&&
+      !e.name.startsWith('リザレクト')&&
+      !e.name.startsWith('ワーディング')&&
+      ['マイナー','セットアップ','オート'].includes(e.timing)
+    );
+    if(cEff.length>0){
+      L.push('セットアップ／マイナー／オート');
+      for(const ef of cEff){
+        const ev=int(ef.enc);
+        if(ev>0)L.push(`:侵蝕率+${ev}　《${ef.name}》`);
+        L.push(`《${ef.name}》：${cleanNote(ef.note)}`);
+        if(ef.note.includes('攻撃力')||ef.note.includes('データ変更'))L.push(':攻撃力=');
+        if(ef.note.includes('ガード'))L.push(':ガード=');
+      }
     }
   }
 
-  if(c.combos.length>0){
+  if((!opts||opts.combos)&&c.combos.length>0){
     L.push('コンボ');
     for(const cb of c.combos){
       L.push('');
@@ -407,18 +437,44 @@ function genPalette(c){
   return L.join('\n');
 }
 
-function generate(c){
+function generate(c,opts){
   const dn=c.aka?`"${c.aka}" ${c.name}`:c.name;
   return {
     kind:'character',
     data:{
-      name:dn,memo:c.memo,commands:genPalette(c),
+      name:dn,memo:c.memo,commands:genPalette(c,opts),
       externalUrl:c.sheetUrl,iconUrl:c.imageUrl,
       initiative:c.init,width:5,
       secret:false,invisible:false,hideStatus:false,
-      status:genStatus(c),params:genParams(c),
+      status:genStatus(c,opts),params:genParams(c,opts),
     }
   };
+}
+
+/* ========== State ========== */
+let lastParsedChar = null;
+
+function getOutputOptions() {
+  const opts = {};
+  document.querySelectorAll('#outputOptions input[type="checkbox"]').forEach(cb => {
+    opts[cb.value] = cb.checked;
+  });
+  return opts;
+}
+
+function toggleAllOutputOptions(state) {
+  document.querySelectorAll('#outputOptions input[type="checkbox"]').forEach(cb => {
+    cb.checked = state;
+  });
+  regenerateOutput();
+}
+
+function regenerateOutput() {
+  if (!lastParsedChar) return;
+  const opts = getOutputOptions();
+  const result = generate(lastParsedChar, opts);
+  document.getElementById('cocofoliaOutput').value = JSON.stringify(result);
+  document.getElementById('palettePreview').textContent = result.data.commands;
 }
 
 /* ========== UI ========== */
@@ -462,7 +518,9 @@ function convertFromJson(){
   if(!json.characterName){showErr('キャラクターデータが見つかりません。ゆとシートIIのJSONデータか確認してください。');return}
   try{
     const c=parseChar(json);
-    const result=generate(c);
+    lastParsedChar=c;
+    const opts=getOutputOptions();
+    const result=generate(c,opts);
     document.getElementById('cocofoliaOutput').value=JSON.stringify(result);
     document.getElementById('palettePreview').textContent=result.data.commands;
     const out=document.getElementById('outputSection');
